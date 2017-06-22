@@ -529,6 +529,13 @@ ip6_input(struct pbuf *p, struct netif *inp)
         }
         first = 0;
         netif = netif_list;
+#ifdef LWIP_HOOK_IP6_NETIF
+        struct netif *hook = LWIP_HOOK_IP6_NETIF(ip6hdr);
+        if (hook) {
+          netif = hook;
+          break;
+        }
+#endif /* LWIP_HOOK_IP6_NETIF END */
       } else {
         netif = netif->next;
       }
