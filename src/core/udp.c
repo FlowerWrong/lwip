@@ -244,6 +244,12 @@ udp_input(struct pbuf *p, struct netif *inp)
     ip_addr_debug_print(UDP_DEBUG, &pcb->remote_ip);
     LWIP_DEBUGF(UDP_DEBUG, (", %"U16_F")\n", pcb->remote_port));
 
+#ifdef LWIP_HOOK_UDP_LISTEN_PCB
+    uncon_pcb = pcb;
+    prev = pcb;
+    break;
+#endif /* LWIP_HOOK_UDP_LISTEN_PCB END */
+
     /* compare PCB local addr+port to UDP destination addr+port */
     if ((pcb->local_port == dest) &&
         (udp_input_local_match(pcb, inp, broadcast) != 0)) {
@@ -390,6 +396,9 @@ udp_input(struct pbuf *p, struct netif *inp)
       /* callback */
       if (pcb->recv != NULL) {
         /* now the recv function is responsible for freeing p */
+#ifdef LWIP_HOOK_UDP_LISTEN_PCB
+        pcb->remote_fake_ip = *(ip_current_dest_addr());
+#endif /* LWIP_HOOK_UDP_LISTEN_PCB END */
         pcb->recv(pcb->recv_arg, pcb, p, ip_current_src_addr(), src);
       } else {
         /* no recv function registered? then we have to free the pbuf! */
@@ -645,7 +654,11 @@ udp_sendto_if_chksum(struct udp_pcb *pcb, struct pbuf *p, const ip_addr_t *dst_i
       return ERR_RTE;
     }
     /* use UDP PCB local IP address as source address */
+#ifdef LWIP_HOOK_UDP_LISTEN_PCB
+    src_ip = &pcb->remote_fake_ip;
+#else
     src_ip = &pcb->local_ip;
+#endif /* LWIP_HOOK_UDP_LISTEN_PCB END */
   }
 #endif /* LWIP_IPV4 */
 #if LWIP_CHECKSUM_ON_COPY && CHECKSUM_GEN_UDP
