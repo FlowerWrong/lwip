@@ -82,6 +82,10 @@ struct udp_pcb {
 /** Common members of all PCB types */
   IP_PCB;
 
+#ifdef LWIP_HOOK_UDP_LISTEN_PCB
+    ip_addr_t remote_fake_ip;
+#endif /* LWIP_HOOK_UDP_LISTEN_PCB END */
+
 /* Protocol specific PCB members */
 
   struct udp_pcb *next;
