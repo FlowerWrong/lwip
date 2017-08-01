@@ -84,6 +84,7 @@ struct udp_pcb {
 
 #ifdef LWIP_HOOK_UDP_LISTEN_PCB
     ip_addr_t remote_fake_ip;
+    u16_t remote_fake_port;
 #endif /* LWIP_HOOK_UDP_LISTEN_PCB END */
 
 /* Protocol specific PCB members */

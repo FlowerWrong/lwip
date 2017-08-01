@@ -398,6 +398,7 @@ udp_input(struct pbuf *p, struct netif *inp)
         /* now the recv function is responsible for freeing p */
 #ifdef LWIP_HOOK_UDP_LISTEN_PCB
         pcb->remote_fake_ip = *(ip_current_dest_addr());
+        pcb->remote_fake_port = lwip_ntohs(udphdr->dest);
 #endif /* LWIP_HOOK_UDP_LISTEN_PCB END */
         pcb->recv(pcb->recv_arg, pcb, p, ip_current_src_addr(), src);
       } else {
@@ -745,7 +746,11 @@ udp_sendto_if_src_chksum(struct udp_pcb *pcb, struct pbuf *p, const ip_addr_t *d
               (q->len >= sizeof(struct udp_hdr)));
   /* q now represents the packet to be sent */
   udphdr = (struct udp_hdr *)q->payload;
+#ifdef LWIP_HOOK_UDP_LISTEN_PCB
+  udphdr->src = lwip_htons(pcb->remote_fake_port);
+#else
   udphdr->src = lwip_htons(pcb->local_port);
+#endif /* LWIP_HOOK_UDP_LISTEN_PCB END */
   udphdr->dest = lwip_htons(dst_port);
   /* in UDP, 0 checksum means 'no checksum' */
   udphdr->chksum = 0x0000;
