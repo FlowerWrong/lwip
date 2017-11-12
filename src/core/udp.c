@@ -3,7 +3,7 @@
  * User Datagram Protocol module\n
  * The code for the User Datagram Protocol UDP & UDPLite (RFC 3828).\n
  * See also @ref udp_raw
- * 
+ *
  * @defgroup udp_raw UDP
  * @ingroup callbackstyle_api
  * User Datagram Protocol module\n
@@ -244,6 +244,12 @@ udp_input(struct pbuf *p, struct netif *inp)
     ip_addr_debug_print(UDP_DEBUG, &pcb->remote_ip);
     LWIP_DEBUGF(UDP_DEBUG, (", %"U16_F")\n", pcb->remote_port));
 
+#ifdef LWIP_HOOK_UDP_LISTEN_PCB
+    uncon_pcb = pcb;
+    prev = pcb;
+    break;
+#endif /* LWIP_HOOK_UDP_LISTEN_PCB END */
+
     /* compare PCB local addr+port to UDP destination addr+port */
     if ((pcb->local_port == dest) &&
         (udp_input_local_match(pcb, inp, broadcast) != 0)) {
@@ -389,6 +395,10 @@ udp_input(struct pbuf *p, struct netif *inp)
 #endif /* SO_REUSE && SO_REUSE_RXTOALL */
       /* callback */
       if (pcb->recv != NULL) {
+#ifdef LWIP_HOOK_UDP_LISTEN_PCB
+        pcb->remote_fake_ip = *(ip_current_dest_addr());
+        pcb->remote_fake_port = lwip_ntohs(udphdr->dest);
+#endif /* LWIP_HOOK_UDP_LISTEN_PCB END */
         /* now the recv function is responsible for freeing p */
         pcb->recv(pcb->recv_arg, pcb, p, ip_current_src_addr(), src);
       } else {
@@ -645,7 +655,11 @@ udp_sendto_if_chksum(struct udp_pcb *pcb, struct pbuf *p, const ip_addr_t *dst_i
       return ERR_RTE;
     }
     /* use UDP PCB local IP address as source address */
+#ifdef LWIP_HOOK_UDP_LISTEN_PCB
+    src_ip = &pcb->remote_fake_ip;
+#else
     src_ip = &pcb->local_ip;
+#endif /* LWIP_HOOK_UDP_LISTEN_PCB END */
   }
 #endif /* LWIP_IPV4 */
 #if LWIP_CHECKSUM_ON_COPY && CHECKSUM_GEN_UDP
@@ -732,7 +746,11 @@ udp_sendto_if_src_chksum(struct udp_pcb *pcb, struct pbuf *p, const ip_addr_t *d
               (q->len >= sizeof(struct udp_hdr)));
   /* q now represents the packet to be sent */
   udphdr = (struct udp_hdr *)q->payload;
+#ifdef LWIP_HOOK_UDP_LISTEN_PCB
+  udphdr->src = lwip_htons(pcb->remote_fake_port);
+#else
   udphdr->src = lwip_htons(pcb->local_port);
+#endif /* LWIP_HOOK_UDP_LISTEN_PCB END */
   udphdr->dest = lwip_htons(dst_port);
   /* in UDP, 0 checksum means 'no checksum' */
   udphdr->chksum = 0x0000;
